@@ -40,30 +40,30 @@ class TestStrategy(Strategy):
     def calculate_signals(self, event, cur_layer=0):
 
         if event.type == 'MARKET':
-            self.calculate_stock_selection(cur_layer)
+            self.calculate_stock_selection(cur_layer) # 调用计算函数
 
             if not self.transferring:
-                for s in self.symbol_list:
-                    if self.bought[s] == 'LONG':
-                        bar_date = self.bars.get_latest_bar_datetime(s)
+                for s in self.symbol_list:  # 遍历所有股票
+                    if self.bought[s] == 'LONG':  # 如果持有
+                        bar_date = self.bars.get_latest_bar_datetime(s)  # 获取目前日期
                         symbol = s
-                        dt = datetime.datetime.utcnow()
-                        sig_dir = 'EXIT'
-                        order_price = self.bars.get_latest_bars_values(s, 'close')
-                        signal = SignalEvent(1, bar_date, symbol, dt, sig_dir, order_price, 1.0)
-                        self.events.put(signal)
-                        self.bought[s] = 'OUT'
-                self.transferring = True
+                        dt = datetime.datetime.utcnow()  # 获取当前现实时间（目前框架里还没用到）
+                        sig_dir = 'EXIT'  # 指令为清仓
+                        order_price = self.bars.get_latest_bars_values(s, 'close')  # 交易价格，用收盘价表示
+                        signal = SignalEvent(1, bar_date, symbol, dt, sig_dir, order_price, 1.0)  # 抛出清仓信号事件
+                        self.events.put(signal)  # 将事件放入队列中 （循环后队列中应该多出n个清仓信号）
+                        self.bought[s] = 'OUT'  # 买入情况变为'OUT'
+                self.transferring = True  # 调仓中，transferring为True时不会进行下一天的循环
 
             else:
                 for s in self.symbol_list:
-                    if s in self.stock_list.values and self.bought[s] == "OUT":
+                    if s in self.stock_list.values and self.bought[s] == "OUT":  # 股票在待买入列表中
                         bar_date = self.bars.get_latest_bar_datetime(s)
                         symbol = s
                         dt = datetime.datetime.utcnow()
-                        sig_dir = 'LONG'
+                        sig_dir = 'LONG'  # 指令为买入
                         order_price = self.bars.get_latest_bars_values(s, 'close')
-                        signal = SignalEvent(1, bar_date, symbol, dt, sig_dir, order_price, 1.0)
-                        self.events.put(signal)
-                        self.bought[s] = "LONG"
-                self.transferring = False
+                        signal = SignalEvent(1, bar_date, symbol, dt, sig_dir, order_price, 1.0)  # 抛出买入信号事件
+                        self.events.put(signal)  # 将事件放入队列中（循环后队列中应该多出n个买入信号）
+                        self.bought[s] = "LONG"  # 买入情况变为'LONG'
+                self.transferring = False  # 调仓结束，transferring为False，信号处理结束后正常进行下一天的循环
